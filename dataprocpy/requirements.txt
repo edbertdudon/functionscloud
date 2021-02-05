@@ -1,0 +1,4 @@
+requests==2.20.0
+google-cloud-dataproc
+flask
+flask-cors

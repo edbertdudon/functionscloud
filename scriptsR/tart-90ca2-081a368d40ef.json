@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "tart-90ca2",
+  "private_key_id": "081a368d40ef5acb3012f5ecf785c8ac31b11752",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDHf9VTKLrdQkD2\nKY6uzy5/fBk1XRU+Cf8cDffNSgr6uVX2ug4YV67Vw5LeAymFjTMkomv5ThQfQDXm\nxNxlXl37BPL9Ck/4hqF57a9NE47SiRg89ZgyA4G+JEKIuDXO/h9s7/18PWbQSIWu\n+CS77rxrCMiBwl4Aw3slPd9apZ6EG/1ttpRYjjD4FlhnN84FbwCfT06JvVZaycgL\nYjdhitN3M9pXvypuZ7SH6MdVKGUbiy5jtyZOsEt4ciciJRifJQJsyBMtvq3hjo1Y\nwtD9MBtjnlreF3bh3jwrDFgyYJ31jSfZD2FZROH+rZey3XnG2C357PgdMVKsH8d6\nrNevj/s3AgMBAAECggEAA9RWWfRMMfcVnCQMExry/4t4SGfzAm/ar8Us3onvUATC\nu6uynZEBUCUi6pQQ9flR5AAiJnTzOe5Xmoho2qFHGIxtxaGvC0w6SUbguJAJi80J\n5BGqzDr5AJddl5ZBoimKnOK2cO4UzSa3OjaVLe5VO5C9mJAMkeMut/ZKFUlck5iV\nP8mP+UAM46HaIKtL7jBHZwFPz7UMV/k0Mnc5dx+bWycs2A51yZH+Hm+x9lInM/P4\nJVVrs2KOoRaaPUAao8UFXr5pefoxfHqvJU+5Jg+6RM24uNeXGy5C2WUldaBvar1J\nCq/30L1DIlCGkVQmAb6qlegoWMnMjRTezGOP0XRrkQKBgQDzHauFf6jTFH24hRGq\nhCWtdid2ZvdtxZKUiEpnR2kVkhPGzykSmtyLHyPQ4K053BIluQCKFAjTJHGEPA4y\nWaBjjFJlanHKPhV3dfjBqAQLWjWBkQhSOFU4ryo6Ks54We4Q29AicUEu1kf+bobF\nnOPzQfBWYCLAT8rJMpFQTpYdRQKBgQDSEmv4tELygcQ4zrr6GKVjlhXFNOm2uLde\nuIbvxuL3iKEYKrZHCBc7OtEXaxjF4nB3gup+wvHyf7UScgakXTFclZ3tLMeBAkSo\nz+QDkttpD4Q2y5I0yQCqA9ISEcRm5SUJKC7dFWDtcbmqzCEdmO0+Q9eLKUm4cGR7\nyXVuwJJISwKBgQDh+Fr8C+tsvugYQT9pYcjvkRoe+JfU5UZYXtHha0OmdA+Dw/vm\nOiDyAvC0bpE0bXREsc9piDOnpYEJqxR7AkmNHdlcQHMhy1ECp5mezr9rmd6P3rGA\nUrILrOywAifFP7mC2/16dhBjK3Lhb/Q+65QI/+oXLuY+ICxZlHHy1gi7jQKBgHxa\ncVXhB3xcutZR8jcYHddswehiYTNL9yh4HVCVMEgNticDKbG0pWPndlzhheGmIKNu\nePee2PCPDpYjr7DehdjjrH/4sQS6XgB8R+KhrYZsq/xv11Wt4tnBtzoBEH1Eif74\nrX0sKZuFZb4oZjYKD+565H45a61lwuXQJNbx4eYvAoGAWxGO0Zd/OpAlj4ySlb0d\n8Mi8nS/CQWuGwJICBcTU5fljjZMrYEte1qA+QySom5fPrXtGBA1aPLFncmLge29k\nuaX5xolLzcQEvsInEy/pc51BsBeWTH912D+BLPTuLiTYIM8sI3SrT1qNt4+pEjJE\nCRYN55/toCSndXROFipRdZc=\n-----END PRIVATE KEY-----\n",
+  "client_email": "tart-90ca2-crypto-decryptor@tart-90ca2.iam.gserviceaccount.com",
+  "client_id": "117246530971268292008",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/tart-90ca2-crypto-decryptor%40tart-90ca2.iam.gserviceaccount.com"
+}

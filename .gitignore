@@ -1,0 +1,5 @@
+dist/*
+node_modules/*
+connector/node_modules/*
+connector/lib/*
+dataprocjs/node_modules/*

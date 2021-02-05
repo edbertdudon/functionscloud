@@ -1,0 +1,25 @@
+{
+  "name": "mysqlconnector",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "functions-framework --target=connectMsSql"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/firestore": "^4.2.0",
+    "@google-cloud/functions-framework": "^1.7.1",
+    "@google-cloud/kms": "^2.1.2",
+    "async": "^3.2.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "mssql": "^6.2.1",
+    "mysql": "^2.18.1",
+    "oracledb": "^5.0.0",
+    "tedious": "^9.1.0"
+  },
+  "devDependencies": {},
+  "description": ""
+}

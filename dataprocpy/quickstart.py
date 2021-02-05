@@ -1,0 +1,221 @@
+import argparse
+import time
+import json
+from flask import Flask
+from flask_cors import CORS
+
+from google.cloud import dataproc_v1 as dataproc
+from google.cloud.dataproc_v1.gapic.transports import (
+    cluster_controller_grpc_transport)
+from google.cloud.dataproc_v1.gapic.transports import (
+    job_controller_grpc_transport)
+from google.oauth2 import service_account
+from google.protobuf.duration_pb2 import Duration
+
+import http.server
+import socketserver
+
+PORT = 8000
+
+handler = http.server.SimpleHTTPRequestHandler
+
+with socketserver.TCPServer(("", PORT), handler) as httpd:
+    print("Server started at localhost:" + str(PORT))
+    httpd.serve_forever()
+
+
+app = Flask(__name__)
+# CORS(app, resources={r"/*": {"origins": "https://tart-90ca2.firebaseapp.com"}})
+# CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
+
+waiting_callback = False
+
+def callback(operation_future):
+    # Reset global when callback returns.
+    global waiting_callback
+    waiting_callback = False
+
+def wait_for_cluster_creation():
+    """Wait for cluster creation."""
+    print('Waiting for cluster creation...')
+
+    while True:
+        if not waiting_callback:
+            print("Cluster created.")
+            break
+
+# [START dataproc_create_cluster]
+def create_cluster(dataproc, project_id, region, cluster_name):
+    print('Creating cluster...')
+
+    duration_message = Duration()
+    duration_message.FromSeconds(10800)
+
+    cluster_data = {
+        'project_id': project_id,
+        'cluster_name': cluster_name,
+        'config': {
+            'master_config': {
+                'num_instances': 1,
+                'machine_type_uri': 'n1-highmem-2',
+                'disk_config': {
+                    'boot_disk_size_gb': 20
+                }
+            },
+            'worker_config': {
+                'num_instances': 2,
+                'machine_type_uri': 'n1-highmem-2',
+                'disk_config': {
+                    'boot_disk_size_gb': 20
+                }
+            },
+            'lifecycle_config': {
+                'idle_delete_ttl': duration_message
+            },
+            'initialization_actions': [{
+                'executable_file': 'gs://tart-90ca2.appspot.com/scripts/initializationScript.sh'
+            }]
+        }
+    }
+
+    cluster = dataproc.create_cluster(project_id, region, cluster_data)
+    cluster.add_done_callback(callback)
+    global waiting_callback
+    waiting_callback = True
+# [END dataproc_create_cluster]
+
+# [START dataproc_submit_sparkr_job]
+def submit_sparkr_job(dataproc, project, region, cluster_name, job_file_path,
+                       job_file_argument, job_file_save, worksheet):
+
+    job_details = {
+        'placement': {
+            'cluster_name': cluster_name
+        },
+        'spark_r_job': {
+            'main_r_file_uri': job_file_path,
+			'args': [
+				job_file_argument,
+				job_file_save
+			]
+        },
+        'labels': {
+            'worksheet': worksheet
+        }
+    }
+
+    result = dataproc.submit_job(
+        project_id=project, region=region, job=job_details)
+    job_id = result.reference.job_id
+    print('Submitted job ID {}.'.format(job_id))
+    return result
+# [END dataproc_submit_sparkr_job]
+
+@app.route("/create_and_submit")
+def create_and_submit(request):
+    if request.method == 'OPTIONS':
+        headers = {
+            # 'Access-Control-Allow-Origin': 'https://tart-90ca2.firebaseapp.com',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '3600',
+            'Access-Control-Allow-Credentials': 'true'
+        }
+
+        return ('', 204, headers)
+    
+    request_json = request.get_json()
+    authuser = request_json['authuser']
+    project_id = 'tart-90ca2'
+    region = 'us-central1'
+    cluster_name = 'cluster-' + authuser
+    duration_message = Duration()
+    duration_message.FromSeconds(10800)
+
+    # Job arguments
+    worksheet = request_json['worksheet']
+    job_file_argument = request_json['jobFileArgument']
+    job_file_save = request_json['jobFileSave']
+    job_file_path = request_json['jobFilePath']
+    credentials = service_account.Credentials.from_service_account_file(
+        './tart-90ca2-9d37c42ef480.json',
+        scopes=["https://www.googleapis.com/auth/cloud-platform"],
+    )
+    client_options = {
+        'api_endpoint': '{}-dataproc.googleapis.com:443'.format(region),
+    }
+
+    # Use the default gRPC global endpoints.
+    dataproc_cluster_client = dataproc.ClusterControllerClient(
+        client_options = client_options, credentials=credentials)
+
+    dataproc_job_client = dataproc.JobControllerClient(
+        client_options = client_options, credentials=credentials)
+    
+    # else:
+    #     region = region
+    #     # Use a regional gRPC endpoint. See:
+    #     # https://cloud.google.com/dataproc/docs/concepts/regional-endpoints
+    #     client_transport = (
+    #         cluster_controller_grpc_transport.ClusterControllerGrpcTransport(
+    #             address='{}-dataproc.googleapis.com:443'.format(region)))
+    #     job_transport = (
+    #         job_controller_grpc_transport.JobControllerGrpcTransport(
+    #             address='{}-dataproc.googleapis.com:443'.format(region)))
+    #     dataproc_cluster_client = dataproc.ClusterControllerClient(
+    #         client_transport, credentials=credentials)
+    #     dataproc_job_client = dataproc.JobControllerClient(
+    #         job_transport, credentials=credentials)
+    # # [END dataproc_get_client]
+
+    try:
+        create_cluster(dataproc_cluster_client, project_id, region,
+                           cluster_name)
+        wait_for_cluster_creation()
+    finally:
+        # [START dataproc_call_submit_pyspark_job]
+        job_resp = submit_sparkr_job(dataproc, project_id, region, cluster_name, job_file_path,
+                       job_file_argument, job_file_save, worksheet)
+        # [END dataproc_call_submit_pyspark_job]
+    
+    headers = {
+        # 'Access-Control-Allow-Origin': 'https://tart-90ca2.firebaseapp.com',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': 'true'
+    }
+
+    return (job_resp, 200, headers)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        '--project_id',
+        type=str,
+        required=True,
+        help='Project to use for creating resources.')
+    parser.add_argument(
+        '--region',
+        type=str,
+        required=True,
+        help='Region where the resources should live.')
+    parser.add_argument(
+        '--cluster_name',
+        type=str,
+        required=True,
+        help='Name to use for creating a cluster.')
+    parser.add_argument(
+        '--job_file_path',
+        type=str,
+        required=True,
+        help='Job in GCS to execute against the cluster.')
+
+    args = parser.parse_args()
+    quickstart(args.project_id, args.region,
+               args.cluster_name, args.job_file_path)
+# [END dataproc_quickstart]

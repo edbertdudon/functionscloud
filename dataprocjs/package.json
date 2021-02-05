@@ -1,0 +1,25 @@
+{
+  "name": "datparocjs",
+  "version": "1.0.0",
+  "description": "cloud-functions",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "functions-framework --target=testauth"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/dataproc": "^1.6.0",
+    "@google-cloud/functions-framework": "^1.7.1",
+    "@google-cloud/storage": "^4.7.0",
+    "cors": "^2.8.5",
+    "firebase-admin": "^8.12.1",
+    "google-auth-library": "^6.0.0",
+    "google-protobuf": "^3.12.2",
+    "googleapis": "^48.0.0",
+    "mysql": "^2.18.1",
+    "sleep": "^6.1.0"
+  },
+  "devDependencies": {}
+}

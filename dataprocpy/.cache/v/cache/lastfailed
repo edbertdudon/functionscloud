@@ -1,0 +1,4 @@
+{
+  "sample_http_test.py::test_name": true,
+  "sample_http_test.py::test_print_hello_world": true
+}
