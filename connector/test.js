@@ -4,17 +4,17 @@
 async function test() {
 	// Google Cloud KMS
 
-	// const projectId = 'tart-90ca2';
-	// const region = 'us-central1';
-	// const keyRingId = 'cloudR-user-database';
-	// const keyId = 'database-login';
-	// const versionId = '1';
-	// const userId = 'x9J4UnfNyDTfcPu4FilasMZdb1K3'
+	const projectId = 'tart-90ca2';
+	const region = 'us-central1';
+	const keyRingId = 'cloudR-user-database';
+	const keyId = 'database-login';
+	const versionId = '1';
+	const userId = 'x9J4UnfNyDTfcPu4FilasMZdb1K3'
 	//
 	// const Firestore = require('@google-cloud/firestore');
 	// const firestore = new Firestore({
 	// 	projectId: projectId,
-	// 	keyFilename: './tart-90ca2-9d37c42ef480.json',
+	// 	keyFilename: '/Users/eb/functionscloud/dataprocjs/tart-90ca2-e8da41e06847.json',
 	// });
 	//
 	// async function getCredentials(firestore, uid) {
@@ -24,10 +24,10 @@ async function test() {
 	// 	return doc.data();
 	// }
 	//
-	// // const credentials = await getCredentials(firestore, userId)
-	//
-	// // const ciphertext = Buffer.from(credentials['localhost:3306'].password);
-	// // console.log(credentials['localhost:3306'])
+	// const credentials = await getCredentials(firestore, userId)
+
+	// const plaintextBuffer = Buffer.from('MyNewPass');
+	// console.log(plaintextBuffer)
 	//
 	// const {KeyManagementServiceClient} = require('@google-cloud/kms');
 	// const client = new KeyManagementServiceClient();
@@ -39,12 +39,35 @@ async function test() {
 	// 	versionId
 	// );
 	//
-	// const ciphertext = "Qk0xwsjehlrBwPAWnPcRTMiZoGgLP3CQiLT45PwsbXqmclmtIbELsz9xI0trkRDr2VwiEhGQwgFkj0hqh7L/CDPmQZz/+qBxrlexItvZ5CkEosxkdHZ2W5bWJeQcFAvQK88rvOxNcQiLbmRh4v5aIqKbVbNrq33pmoIViqrIjq05BxrafQXXfYQnmjknhwAfz0rNHujwZj6VKcnE94y6tbOIoRFFVRqFHY3M7YHDwBdgJAHeptBmSzTc9GnC9t1dfuo9fvBo3FZqx7a2+s5ozrmyKWkC/YqgAJq/V2AqiN5i5qB2ypBm+rJf7G4fTsuOldUaCf1nqN2yOu308/mnYi57cCPt359xmx03A7cMo/JHrnTlmNUh1SPJFVMT1ZcJQRDPJIGeUnvqDCUs6kFrMlR5fZej33VCrzu1wX5n+5L1GJA1fUOFVHCtaqqIi2NngfXz1H8RqRBN+jvBXbugfbMC3m+/fnzSmekT7tYGOE+lsfgVyB2sYoGa0jprnPjV";
+	// async function encryptAsymmetric() {
+	//   // Get public key from Cloud KMS
+	//   const [publicKey] = await client.getPublicKey({
+	//     name: versionName,
+	//   });
+	//
+	//   // Import and setup crypto
+	//   const crypto = require('crypto');
+	//   const ciphertextBuffer = crypto.publicEncrypt(
+	//     {
+	//       key: publicKey.pem,
+	//       oaepHash: 'sha256',
+	//       padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+	//     },
+	//     plaintextBuffer
+	//   );
+	//
+	//   console.log(`Ciphertext: ${ciphertextBuffer.toString('base64')}`);
+	//   return ciphertextBuffer;
+	// }
+	//
+	// const ciphertextBuffer = await encryptAsymmetric();
+	//
+	// console.log(ciphertextBuffer)
 	//
 	// async function decryptAsymmetric(client, versionName, ciphertext) {
 	//   const [result] = await client.asymmetricDecrypt({
-	// 	name: versionName,
-	// 	ciphertext: ciphertext,
+	// 		name: versionName,
+	// 		ciphertext: ciphertext,
 	//   });
 	//   console.log(result.plaintext)
 	//   const plaintext = result.plaintext.toString('utf8');
@@ -53,7 +76,7 @@ async function test() {
 	//   return plaintext;
 	// }
 	//
-	// decryptAsymmetric(client, versionName, ciphertext)
+	// decryptAsymmetric(client, versionName, ciphertextBuffer)
 
 
 	// Hash and salt
@@ -133,62 +156,62 @@ async function test() {
 	// 		});
 	// 	}
 	// });
-  const mysql = require('mysql')
-  const { URL } = require('url')
-
-  const url = 'mysql://root:MyNewPass!@localhost:3306/dev2qa'
-  const ca = ''
-  // const ca = '/Users/eb/Library/Application Support/MySQL/Workbench/certificates/39CE5AF8-2B8A-45E2-ABC9-02B11DFBFF2E/ca-cert.pem'
-  const cert = '/Users/eb/Library/Application Support/MySQL/Workbench/certificates/39CE5AF8-2B8A-45E2-ABC9-02B11DFBFF2E/server-cert.pem'
-  const key = '/Users/eb/Library/Application Support/MySQL/Workbench/certificates/39CE5AF8-2B8A-45E2-ABC9-02B11DFBFF2E/server-key.pem'
-
-  const getDatabaseConnectionConfig = () => {
-    // Parse a database url, and destructure the result.
-    // The database url should be similar to this:
-    // mysql://root:somepassword@127.0.0.1:3306/database-name
-    const {
-      username: user,
-      password,
-      port,
-      hostname: host,
-      pathname = ''
-    } = new URL(url)
-    // Prepare connection configuration for mysql.
-    return {
-      user,
-      password,
-      host,
-      port,
-      database: pathname.replace('/', '')
-    }
-  }
-
-  const getSSLConfiguration = () => {
-    if (!ca || !cert || !key) {
-      return {}
-    }
-    return {
-      ssl: {
-        // This is an important step into making the keys work. When loaded into
-        // the environment the \n characters will not be actual new-line characters.
-        // so the .replace() calls fixes that.
-        ca: ca.replace(/\\n/g, '\n'),
-        cert: cert.replace(/\\n/g, '\n'),
-        key: key.replace(/\\n/g, '\n')
-      }
-    }
-  }
-
-  const con = mysql.createConnection({
-    ...getDatabaseConnectionConfig(),
-    ...getSSLConfiguration()
-	})
-
-  con.connect(async err => {
-    console.log('Connected.')
-  })
-
-	con.end()
+  // const mysql = require('mysql')
+  // const { URL } = require('url')
+  //
+  // const url = 'mysql://root:MyNewPass!@localhost:3306/dev2qa'
+  // const ca = ''
+  // // const ca = '/Users/eb/Library/Application Support/MySQL/Workbench/certificates/39CE5AF8-2B8A-45E2-ABC9-02B11DFBFF2E/ca-cert.pem'
+  // const cert = '/Users/eb/Library/Application Support/MySQL/Workbench/certificates/39CE5AF8-2B8A-45E2-ABC9-02B11DFBFF2E/server-cert.pem'
+  // const key = '/Users/eb/Library/Application Support/MySQL/Workbench/certificates/39CE5AF8-2B8A-45E2-ABC9-02B11DFBFF2E/server-key.pem'
+  //
+  // const getDatabaseConnectionConfig = () => {
+  //   // Parse a database url, and destructure the result.
+  //   // The database url should be similar to this:
+  //   // mysql://root:somepassword@127.0.0.1:3306/database-name
+  //   const {
+  //     username: user,
+  //     password,
+  //     port,
+  //     hostname: host,
+  //     pathname = ''
+  //   } = new URL(url)
+  //   // Prepare connection configuration for mysql.
+  //   return {
+  //     user,
+  //     password,
+  //     host,
+  //     port,
+  //     database: pathname.replace('/', '')
+  //   }
+  // }
+  //
+  // const getSSLConfiguration = () => {
+  //   if (!ca || !cert || !key) {
+  //     return {}
+  //   }
+  //   return {
+  //     ssl: {
+  //       // This is an important step into making the keys work. When loaded into
+  //       // the environment the \n characters will not be actual new-line characters.
+  //       // so the .replace() calls fixes that.
+  //       ca: ca.replace(/\\n/g, '\n'),
+  //       cert: cert.replace(/\\n/g, '\n'),
+  //       key: key.replace(/\\n/g, '\n')
+  //     }
+  //   }
+  // }
+  //
+  // const con = mysql.createConnection({
+  //   ...getDatabaseConnectionConfig(),
+  //   ...getSSLConfiguration()
+	// })
+  //
+  // con.connect(async err => {
+  //   console.log('Connected.')
+  // })
+  //
+	// con.end()
 }
 
 test()

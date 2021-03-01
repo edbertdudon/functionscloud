@@ -4,27 +4,27 @@
 #  Created by Edbert Dudon on 7/8/19.
 #  Copyright © 2019 Project Tart. All rights reserved.
 #
-# Tutorial link: https://ericjinks.com/blog/2019/serverless-R-cloud-run/
+#  Tutorial link: https://ericjinks.com/blog/2019/serverless-R-cloud-run/
 #
-# Local:
-# plumb(file='/Users/eb/bac/functionscloud/rscript-R/app.R')$run()
-# write.csv(file='/Users/eb/Desktop/asdf.csv')
+#  Local:
+#  plumb(file='/Users/eb/bac/functionscloud/rscript-R/app.R')$run()
+#  write.csv(file='/Users/eb/Desktop/asdf.csv')
 #
-# Deploy Steps gcloud:
-# 1. cd rscript-R
-# 2. gcloud builds submit --tag gcr.io/tart-90ca2/cloudrun-r-rscript
-# 3. gcloud run deploy --image gcr.io/tart-90ca2/cloudrun-r-rscript --platform managed
+#  Deploy Steps gcloud:
+#  1. cd rscript-R
+#  2. gcloud builds submit --tag gcr.io/tart-90ca2/cloudrun-r-rscript
+#  3. gcloud run deploy --image gcr.io/tart-90ca2/cloudrun-r-rscript --platform managed
 #
-# Deploy Steps Local:
-# docker build . -t 'cloudrun-r-rscript'
-# docker run -p 8080:8080 -e PORT=8080 cloudrun-r-rscript
+#  Deploy Steps Local:
+#  docker build . -t 'cloudrun-r-rscript'
+#  docker run -p 8080:8080 -e PORT=8080 cloudrun-r-rscript
 #
-# Handle Docker errors:
-# - libcurl not found.
-# 		RUN apt-get update -qq && apt-get install -y \
-# 		git-core \
-# 		libssl-dev \
-# 		libcurl4-gnutls-dev
+#  Handle Docker errors:
+#  - libcurl not found.
+# 		 RUN apt-get update -qq && apt-get install -y \
+# 		 git-core \
+# 		 libssl-dev \
+# 		 libcurl4-gnutls-dev
 #
 library(plumber)
 library(jsonlite)
@@ -32,8 +32,6 @@ library(slam)
 library(ggplot2)
 library(dplyr)
 library(broom)
-library(car)
-library(rrcov)
 library(ROI)
 library(ROI.plugin.glpk)
 library(ROI.plugin.qpoases)
@@ -335,8 +333,8 @@ appendMatchNumbers <- function(range) {
     if (grepl('\\[{1},{1}\\d+\\:?\\d*\\]{1}', range)) {
       rowLength <- nrow(evalParse(matchSlide))
       result <- c(1, rowLength, matchNumbers, matchNumbers)
-    # sheet1[2,]
     } else {
+			# sheet1[2,]
       colLength <- ncol(evalParse(matchSlide))
       result <- c(matchNumbers, matchNumbers, 1, colLength)
     }
@@ -345,21 +343,22 @@ appendMatchNumbers <- function(range) {
     result <- c(matchNumbers[1], matchNumbers[1], matchNumbers[2], matchNumbers[2])
   } else if (length(matchNumbers) == 2 && grepl('\\d+\\:{1}\\d+\\,{1}|\\,{1}\\d+\\:{1}\\d+', matchRange)) {
     matchSlide <- sub(FULL_COLUMN_ROW, '', range)
-    # sheet1[2:2,]
+
+		# sheet1[2:2,]
     if (grepl('\\d+\\:{1}\\d+\\,{1}', matchRange)) {
       colLength <- ncol(evalParse(matchSlide))
       result <- c(matchNumbers, 1, colLength)
-    # sheet1[,2:2]
     } else {
+			# sheet1[,2:2]
       rowLength <- nrow(evalParse(matchSlide))
       result <- c(1, rowLength, matchNumbers)
     }
   } else if (length(matchNumbers) == 3 && grepl('\\d+\\:{1}\\d+\\,{1}\\d+|\\d+\\,{1}\\d+\\:{1}\\d+', matchRange)) {
-    # sheet[1:2,2]
-    if (grepl('\\d+\\:{1}\\d+\\,{1}\\d+', matchRange)) {
+		# sheet[1:2,2]
+		if (grepl('\\d+\\:{1}\\d+\\,{1}\\d+', matchRange)) {
       result <- append(matchNumbers, matchNumbers[3], after=3)
-    # sheet[1,1:2]
     } else {
+			# sheet[1,1:2]
       result <- append(matchNumbers, matchNumbers[1], after=0)
     }
   } else {
@@ -1170,7 +1169,7 @@ function(slides, range, firstrow, formula) {
   currentLattitude <<- createLattitudeFromRange(range)
   currentLattitude <<- lattitudeAsDataframe(firstrow, currentLattitude, range)
   lattitude <- lm(evalParse(formula), currentLattitude) %>%
-    ncvTest()[-1] %>%
+    car::ncvTest()[-1] %>%
     unlist()
   matrix(c(names(lattitude), lattitude),nrow=2,byrow=T)
 }
@@ -1190,7 +1189,7 @@ function(slides, names, range, firstrow, formula, pvalue=0.05, observations=10) 
   currentLattitude <<- createLattitudeFromRange(range)
   currentLattitude <<- lattitudeAsDataframe(firstrow, currentLattitude, range)
   regress <- lm(evalParse(formula), currentLattitude) %>%
-    outlierTest(
+    car::outlierTest(
       cutoff=pvalue,
       n.max=observations
     ) %>%
@@ -1211,7 +1210,7 @@ function(slides, names, range, firstrow, formula) {
   currentLattitude <<- createLattitudeFromRange(range)
   currentLattitude <<- lattitudeAsDataframe(firstrow, currentLattitude, range)
   lm(evalParse(formula), currentLattitude) %>%
-    vif() %>%
+    car::vif() %>%
     jsonTidy()
 }
 
@@ -1434,7 +1433,7 @@ function(slides, names, range, firstrow, variablex, variablesy, method='c', appr
     paste(paste0('currentLattitude$`', variablesy, '`'), collapse=','),
     ')'
   ))
-  Wilks.test(
+  rrcov::Wilks.test(
     variablesy,
     variablex,
     method=method,
@@ -1774,30 +1773,35 @@ addConstraintsAsVector <- function(const) {
 addBoundsAsVector <- function(const) {
   if (exists('bounds_vector')) {
     return(c(bounds_vector, const))
-  } else {
-    return(const)
   }
+  return(const)
 }
 
 createConeConstraint <- function(lhs, cone, rhs, K) {
   lhs <- createLattitudeFromRange(lhs)
-  if (is.vector(lhs)) {
+	if (is.vector(lhs)) {
     lhs <- sapply(lhs, as.numeric, USE.NAMES=F)
   } else {
     lhs <- apply(lhs, 1:2, as.numeric)
   }
-  if (any(is.na(lhs))) {
+
+	if (any(is.na(lhs))) {
     stop('Left hand side of conic constraint must be numeric.')
   }
-  rhs <- sapply(createLattitudeFromRange(rhs), as.numeric, USE.NAMES=F)
-  if (any(is.na(rhs))) {
+
+	rhs <- sapply(createLattitudeFromRange(rhs), as.numeric, USE.NAMES=F)
+
+	if (any(is.na(rhs))) {
     stop('Right hand side of conic constraint must be numeric.')
   }
-  cone <- as.numeric(createLattitudeFromRange(cone))
-  if (length(cone) > 1) {
+
+	cone <- as.numeric(createLattitudeFromRange(cone))
+
+	if (length(cone) > 1) {
     stop('Cone must be numeric (e.g., 1 for K_expp(1), 1/4 for K_powp(1/4)).')
   }
-  C_constraint(L=lhs, cone=evalParse(paste0(K, '(', cone, ')')), rhs=rhs)
+
+	C_constraint(L=lhs, cone=evalParse(paste0(K, '(', cone, ')')), rhs=rhs)
 }
 
 nested_unclass <- function(x) {
@@ -1805,8 +1809,152 @@ nested_unclass <- function(x) {
   if (is.list(x)) {
     x <- lapply(x, nested_unclass)
   }
-  return(x)
+  x
 }
+
+jsonWriter <- function(x, file, ...) {
+	writeLines(toJSON(nested_unclass(x), null = "null"), con = file)
+}
+
+# optimx
+jsonReaderOptimx <- function(file, ...) {
+	stopifnot(is.character(file))
+	y <- read_json(file, simplifyVector = TRUE)
+	x <- OP()
+	objective(x) <- F_objective(
+		eval(parse(text=paste(y$objective$F, collapse=''))),
+		y$n_of_variables,
+		G = y$objective$G,
+		H = y$objective$H,
+		names = y$objective$names
+	)
+	types(x) <- y$types
+	bounds(x) <- structure(y$bounds, class=c("V_bound","bound"))
+	maximum(x) <- as.logical(y$maximum)
+	x
+}
+
+optimx_signature <- ROI_plugin_make_signature(
+	objective = "F",
+	constraints = c("X"),
+	# Types not sure
+	types = c("C", "I", "B", "CI", "CB", "IB", "CIB"),
+	bounds = c("X", "V"),
+	cones = c("X")
+	maximum = c(TRUE, FALSE),
+)
+
+ROI_plugin_register_writer("optimx", "optimx", OP_signature(optimization), jsonWriter)
+ROI_plugin_register_reader("optimx", "optimx", jsonReaderOptimx)
+
+# nloptr
+jsonReaderNloptr <- function(file, ...) {
+	stopifnot(is.character(file))
+	y <- read_json(file, simplifyVector = TRUE)
+	x <- OP()
+	objective(x) <- F_objective(
+		eval(parse(text=paste(y$objective$F, collapse=''))),
+		y$n_of_variables,
+		G = y$objective$G,
+		H = y$objective$H,
+		names = y$objective$names
+	)
+	if (!is.null(y$constraints$F)) {
+		constraints(x) <- F_constraint(
+			F = eval(parse(text=paste(y$constraints$F, collapse=''))),
+			dir = y$constraints$dir,
+			rhs = y$constraints$rhs,
+			J = y$constraints$J,
+			names = y$constraints$names
+		)
+	}
+	types(x) <- y$types
+	bounds(x) <- structure(y$bounds, class=c("V_bound","bound"))
+	maximum(x) <- as.logical(y$maximum)
+}
+
+nloptr_signature <- ROI_plugin_make_signature(
+	objective = "F",
+	constraints = c("X", "F"),
+	# Types not sure
+	types = c("C", "I", "B", "CI", "CB", "IB", "CIB"),
+	bounds = c("X", "V"),
+	cones = c("X")
+	maximum = c(TRUE, FALSE),
+)
+
+ROI_plugin_register_writer("nloptr", "nloptr", OP_signature(optimization), jsonWriter)
+ROI_plugin_register_reader("nloptr", "nloptr", jsonReaderNloptr)
+
+# quadprog
+jsonReaderQuadprog <- function(file, ...) {
+	stopifnot(is.character(file))
+	y <- read_json(file, simplifyVector = TRUE)
+	x <- OP()
+	to_slam <- function(x) do.call(simple_triplet_matrix, x)
+	objective(x) <- Q_objective(
+		Q = to_slam(y$objective$Q),
+		L = to_slam(y$objective$L),
+		names = y$objective$names
+	)
+	constraints(x) <- L_constraint(
+		L = to_slam(y$constraints$L),
+		dir = y$constraints$dir,
+		rhs = y$constraints$rhs,
+		names = y$constraints$names
+	)
+	types(x) <- y$types
+	bounds(x) <- structure(y$bounds, class=c("V_bound","bound"))
+	maximum(x) <- as.logical(y$maximum)
+}
+
+quadprog_signature <- ROI_plugin_make_signature(
+	objective = "Q",
+	constraints = c("X", "L"),
+	# Types not sure
+	types = c("C", "I", "B", "CI", "CB", "IB", "CIB"),
+	bounds = c("X", "V"),
+	cones = c("X")
+	maximum = c(FALSE),
+)
+
+ROI_plugin_register_writer("quadprog", "quadprog", OP_signature(optimization), jsonWriter)
+ROI_plugin_register_reader("quadprog", "quadprog", jsonReaderQuadprog)
+
+# qpoases
+jsonReaderQpoases <- function(file, ...) {
+	stopifnot(is.character(file))
+	y <- read_json(file, simplifyVector = TRUE)
+	x <- OP()
+	to_slam <- function(x) do.call(simple_triplet_matrix, x)
+	objective(x) <- Q_objective(
+		Q = to_slam(y$objective$Q),
+		L = to_slam(y$objective$L),
+		names = y$objective$names
+	)
+	constraints(x) <- L_constraint(
+		L = to_slam(y$constraints$L),
+		dir = y$constraints$dir,
+		rhs = y$constraints$rhs,
+		names = y$constraints$names
+	)
+	types(x) <- y$types
+	bounds(x) <- structure(y$bounds, class=c("V_bound","bound"))
+	maximum(x) <- as.logical(y$maximum)
+}
+
+qpoases_signature <- ROI_plugin_make_signature(
+	objective = "Q",
+	constraints = c("X", "L"),
+	# Types not sure
+	types = c("C", "I", "B", "CI", "CB", "IB", "CIB"),
+	bounds = c("X", "V"),
+	cones = c("X")
+	maximum = c(TRUE, FALSE),
+)
+
+ROI_plugin_register_writer("qpoases", "qpoases", OP_signature(optimization), jsonWriter)
+ROI_plugin_register_reader("qpoases", "qpoases", jsonReaderQpoases)
 
 #' Optimization
 #' @param slides worksheet data
@@ -1873,18 +2021,21 @@ function(
 	dataNamesNoRewrite <<- fromJSON(names)
   configureSheetsToMatrix()
   optimization <- OP()
-  # General Objective
+
+	# General Objective
   if (!is.na(objective)) {
     decisionParsed <- evaluateCell(decision)
     # Decision must be limited to a single row or column. Safeguards in client side
     # if (is.matrix(decisionParsed)) {
     #   stop('Decision variables must be limited to a single row or column.')
     # }
-    matchNumbers <- appendMatchNumbers(decision)
+
+		matchNumbers <- appendMatchNumbers(decision)
     if (length(matchNumbers) != 4) {
       stop('Invalid decision variables.')
     }
-    # Decision variables should be numeric unless it represents a matrix
+
+		# Decision variables should be numeric unless it represents a matrix
     # We don't want to evalute. Just need the cell reference.
     parametersList <<- createDecision(sub(RANGE_REGEX, '', decision), matchNumbers)
     parametersListOnlyQuotes <<- createDecision(rangeToMatchSlideQuotes(decision), matchNumbers)
@@ -1901,15 +2052,19 @@ function(
       rangeToMatchSlideQuotes(decision),
       regmatches(decision, regexpr(RANGE_REGEX, decision))
     ))
-    ndecision <- length(parametersList)
-    # decides whether to replace decision with x or x[1] in splitAndReplaceExceptDecision
+
+		ndecision <- length(parametersList)
+
+		# decides whether to replace decision with x or x[1] in splitAndReplaceExceptDecision
     decisionContainsMatrix <<- F
     startDecision <- createLattitudeFromDecision(decisionParsed)
     objectiveFormula <- createGeneralFormFunction(objective)
-    if (!isValidFormula(objectiveFormula)) {
+
+		if (!isValidFormula(objectiveFormula)) {
       stop('Decision variable(s) missing from the objective.')
     }
-    # F_objective requires general function variables to be numeric
+
+		# F_objective requires general function variables to be numeric
     for (name in dataNamesNoRewrite) {
       if (grepl(name, objectiveFormula)) {
         currentLattitude <- createLattitudeFromSlide(name)
@@ -1917,35 +2072,40 @@ function(
         eval(call('<-', as.name(name), currentLattitude))
       }
     }
-    # Can't do sum(Sheet4[,2:2]*3) -- sum(Sheet4[1,2]*3, Sheet4[2,2]*3...)
+
+		# Can't do sum(Sheet4[,2:2]*3) -- sum(Sheet4[1,2]*3, Sheet4[2,2]*3...)
     objectiveFormula <- evalParse(paste0('function(x){', objectiveFormula, '}'))
-    # Gradient
+
+		# Gradient
     if (!is.na(gradient)) {
       # Gradient could be constant
       gradientFormula <- createGeneralFormFunction(gradient)
       gradientFormula <- evalParse(paste0('function(x){', gradientFormula, '}'))
     }
-    # Hessian
+
+		# Hessian
     if (!is.na(hessian)) {
       hessianFormula <- createGeneralFormFunction(hessian)
       hessianFormula <- evalParse(paste0('function(x){', hessianFormula, '}'))
     }
-    if (!is.na(gradient) && !is.na(hessian)) {
-      objective(optimization) <- F_objective(objectiveFormula, ndecision, G=gradientFormula, H=hessianFormula, names=parametersList)
-    } else if (!is.na(gradient) && is.na(hessian)) {
-      objective(optimization) <- F_objective(objectiveFormula, ndecision, G=gradientFormula, names=parametersList)
-    } else if (is.na(gradient) && !is.na(hessian)) {
-      objective(optimization) <- F_objective(objectiveFormula, ndecision, H=hessianFormula, names=parametersList)
-    } else {
-      objective(optimization) <- F_objective(objectiveFormula, ndecision, names=parametersList)
-    }
-  # Quadratic objective
-  } else if (!is.na(quadratic)) {
+
+		objective(optimization) <- F_objective(
+			objectiveFormula,
+			ndecision,
+			G = ifelse(!is.na(gradient), gradientFormula, NULL),
+			H = ifelse(!is.na(hessian)), hessianFormula, NULL),
+			names = parametersList
+		)
+  }
+
+	# Quadratic objective
+	if (!is.na(quadratic)) {
     # Quadratic must a matrix, not single row or column. Safeguards placed from client side.
     matchNumbers <- appendMatchNumbers(quadratic)
     if (length(matchNumbers) != 4) {
       stop('Invalid range for quadratic portion of the objective.')
     }
+
     # create names from quadratic columns
     colLength <- matchNumbers[4]-matchNumbers[3]+1
     quadraticColumns <- vector(mode='character', length=colLength)
@@ -1953,34 +2113,46 @@ function(
     for (col in 1:colLength) {
       quadraticColumns[col] <- paste0(matchSlide, '[', matchNumbers[1], ':', matchNumbers[2], ',', matchNumbers[3]+col-1, ']')
     }
-    names <- sapply(quadraticColumns, function(cell) {
+
+		names <- sapply(quadraticColumns, function(cell) {
       cell <- regmatches(cell, regexpr(RANGE_REGEX, cell))
       cell <- regmatches(cell, gregexpr('\\d+', cell))[[1]]
       letter <- columnToLetter(as.numeric(cell[3]))
       return(paste0(gsub('`', "'", matchSlide), letter, cell[1], ':', letter, cell[2]))
     }, USE.NAMES=F)
-    quadratic <- apply(createLattitudeFromRange(quadratic), 1:2, as.numeric)
-    # No need to check for length(quadratic). Already checked in client
+
+		quadratic <- apply(createLattitudeFromRange(quadratic), 1:2, as.numeric)
+
+		# No need to check for length(quadratic). Already checked in client
     if (any(is.na(quadratic))) {
       stop('Quadratic portion of objective must be numeric.')
     }
-    if (!is.na(linear)) {
+
+		if (!is.na(linear)) {
       # Linear must be limited to a single row or column. Safeguards in client side
       matchNumbers <- appendMatchNumbers(linear)
-      if (length(matchNumbers) != 4) {
+
+			if (length(matchNumbers) != 4) {
         stop('Invalid range for linear portion of the objective.')
       }
+
       linear <- sapply(createLattitudeFromRange(linear), as.numeric, USE.NAMES=F)
-      if (any(is.na(linear))) {
+
+			if (any(is.na(linear))) {
         stop('Linear portion of objective must be numeric.')
       }
-      objective(optimization) <- Q_objective(Q=quadratic, L=linear, names=names)
-    } else {
-      objective(optimization) <- Q_objective(Q=quadratic, names=names)
     }
+
+		objective(optimization) <- Q_objective(
+			Q = quadratic,
+			L = ifelse(!is.na(linear)), linear, NULL),
+			names = names
+		)
     ndecision <- ncol(quadratic)
-  # Linear Objective
-  } else if (!is.na(linear) && is.na(quadratic)) {
+  }
+
+	# Linear Objective
+	if (!is.na(linear) && is.na(quadratic)) {
     # Linear must be limited to a single row or column. Safeguards in client side
     matchNumbers <- appendMatchNumbers(linear)
     if (length(matchNumbers) != 4) {
@@ -2000,59 +2172,87 @@ function(
     ndecision <- length(linear)
   }
 
+	# F_constraint
   if (!is.na(flhs) && !is.na(fdir) && !is.na(frhs)) {
     matchNumbers <- appendMatchNumbers(flhs)
-    if (length(matchNumbers) != 4) {
+
+		if (length(matchNumbers) != 4) {
       stop('Invalid range for left hand side of general constraint.')
     }
+
     flhs <- createDecision(sub(RANGE_REGEX, '', flhs), matchNumbers)
     flhs <- sapply(flhs, createGeneralFormFunction, USE.NAMES=F)
-    if (F %in% sapply(flhs, isValidFormula, USE.NAMES=F)) {
+
+		if (F %in% sapply(flhs, isValidFormula, USE.NAMES=F)) {
       stop('Constraints must contain a decision variable')
     }
-    flhs <- sapply(flhs, function(x) {
+
+		flhs <- sapply(flhs, function(x) {
       evalParse(paste0('function(x){', x, '}'))
     })
     fdir <- translateDirection(fdir)
     frhs <- createRhsConstraint(frhs)
-    if (!is.na(jacobian)) {
+
+		if (!is.na(jacobian)) {
       # Constant Jacobian exists
       jacobianFormula <- createGeneralFormFunction(gradient)
       jacobianFormula <- evalParse(paste0('function(x){', jacobianFormula, '}'))
-      constraints_vector <- F_constraint(F=flhs, dir=fdir, rhs=frhs, J=jacobianFormula, names=parametersList)
-    } else {
-      constraints_vector <- F_constraint(F=flhs, dir=fdir, rhs=frhs, names=parametersList)
     }
+
+		constraints_vector <- F_constraint(
+			F = flhs,
+			dir = fdir,
+			rhs = frhs,
+			J = ifelse(!is.na(jacobian)), jacobianFormula, NULL),
+			names=parametersList
+		)
   }
 
   if (!is.na(qquad) && !is.na(qdir) && !is.na(qrhs)) {
     # list of length m where the entries are either of n × n matrices or NULL.
     # NOT WORKING YET
     qquad <- apply(createLattitudeFromRange(qquad), 1:2, as.numeric)
-    # No need to check for length(qquad). Already checked in client
+
+		# No need to check for length(qquad). Already checked in client
     if (any(is.na(qquad))) {
       stop('Quadratic portion of constraint must be numeric.')
     }
-    qdir <- translateDirection(qdir)
-    qrhs <- createRhsConstraint(qrhs)
-    if (!is.na(qlin)) {
+
+		if (!is.na(qlin)) {
       qlin <- sapply(createLattitudeFromRange(qlin), as.numeric, USE.NAMES=F)
-      if (any(is.na(qlin))) {
+
+			if (any(is.na(qlin))) {
         stop('Linear objective must be numeric.')
       }
-      constraints_vector <- addConstraintsAsVector(Q_constraint(Q=qquad, L=qlin, dir=qdir, rhs=qrhs))
-    } else {
-      constraints_vector <- addConstraintsAsVector(Q_constraint(Q=qquad, dir=qdir, rhs=qrhs))
     }
+
+		qdir <- translateDirection(qdir)
+		qrhs <- createRhsConstraint(qrhs)
+
+		constraints_vector <- addConstraintsAsVector(
+			Q_constraint(
+				Q = qquad,
+				L = ifelse(!is.na(qlin)), qlin, NULL),
+				dir = qdir,
+				rhs = qrhs
+			)
+		)
   }
 
   if (!is.na(llin) && !is.na(ldir) && !is.na(lrhs)) {
     llin <- sapply(createLattitudeFromRange(llin), as.numeric, USE.NAMES=F)
-    if (any(is.na(llin))) {
+
+		if (any(is.na(llin))) {
       stop('Linear constraint must be numeric.')
     }
-    constraints_vector <- addConstraintsAsVector(
-      L_constraint(L=llin, dir=translateDirection(ldir), rhs=createRhsConstraint(lrhs)))
+
+		constraints_vector <- addConstraintsAsVector(
+      L_constraint(
+				L = llin,
+				dir = translateDirection(ldir),
+				rhs = createRhsConstraint(lrhs)
+			)
+		)
   }
 
   if (!is.na(c0lhs) && !is.na(c0cone) && !is.na(c0rhs)) {
@@ -2175,10 +2375,9 @@ function(
 	}
 
   file <- tempfile()
-  # only works for lp_solve
-  # print(ROI_registered_writer())
-  # ROI_write(optimization, file, solver=solver)
-  # print(toJSON(readLines(file)))
+  ROI_write(optimization, file, solver=solver)
+	writeLines(readLines(file))
+	# save file
 
   # Optimization
   if (!is.na(objective)) {

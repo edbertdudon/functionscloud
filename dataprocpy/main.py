@@ -86,18 +86,17 @@ def wait_for_cluster_creation():
 
 
 # [START dataproc_submit_sparkr_job]
-def submit_sparkr_job(dataproc, project_id, region, cluster_name, job_file_path,
-                       job_file_argument, job_file_save, worksheet):
+def submit_sparkr_job(dataproc, project_id, region, cluster_name, job_file_argument,
+                    worksheet):
 
     job_details = {
         'placement': {
             'cluster_name': cluster_name
         },
         'spark_r_job': {
-            'main_r_file_uri': job_file_path,
+            'main_r_file_uri': 'gs://tart-90ca2.appspot.com/scripts/sparkR.R',
 			'args': [
 				job_file_argument,
-				job_file_save
 			]
         },
         'labels': {
@@ -165,8 +164,7 @@ def createandsubmit(request):
     # Job arguments
     worksheet = request_json['worksheet']
     job_file_argument = request_json['jobFileArgument']
-    job_file_save = request_json['jobFileSave']
-    job_file_path = request_json['jobFilePath']
+    # job_file_save = request_json['jobFileSave']
     credentials = service_account.Credentials.from_service_account_file(
         './tart-90ca2-9d37c42ef480.json',
         scopes=["https://www.googleapis.com/auth/cloud-platform"],
@@ -206,8 +204,8 @@ def createandsubmit(request):
         print("Cluster already created")
 
     try:
-        job_resp = submit_sparkr_job(dataproc_job_client, project_id, region, cluster_name, job_file_path,
-                        job_file_argument, job_file_save, worksheet)
+        job_resp = submit_sparkr_job(dataproc_job_client, project_id, region, cluster_name, job_file_argument,
+                        worksheet)
     except:
         print("Failed submit job")
         delete_cluster(dataproc_cluster_client, project_id, region,
@@ -219,8 +217,8 @@ def createandsubmit(request):
         wait_for_cluster_creation()
 
         try:
-            job_resp = submit_sparkr_job(dataproc_job_client, project_id, region, cluster_name, job_file_path,
-                        job_file_argument, job_file_save, worksheet)
+            job_resp = submit_sparkr_job(dataproc_job_client, project_id, region, cluster_name, job_file_argument,
+                            worksheet)
         except:
             print("Failed job retry")
             job_resp =  'failed job'

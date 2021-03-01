@@ -8,30 +8,40 @@
 //  Deploy:
 //  gcloud functions deploy canceljob --runtime nodejs10 --trigger-http --allow-unauthenticated --timeout=540s
 //
-
 // const cors = require('cors')({origin: 'https://tart-90ca2.firebaseapp.com'});
-const cors = require('cors')({origin: 'https://www.tartcl.com'});
-// const cors = require('cors')({origin: '*'});
-
-// goog.require('proto.google.protobuf.Duration')
-// const Duration = proto.google.protobuf.Duration()
-// const Duration = require('google-protobuf/google/protobuf/duration_pb')
-
+// const cors = require('cors')({origin: 'https://www.tartcl.com'});
+const cors = require('cors')({origin: '*'});
 const admin = require('firebase-admin');
 admin.initializeApp({
 	credential: admin.credential.cert('./tart-90ca2-firebase-adminsdk-kf272-41cfb98e9e.json'),
 	databaseURL: 'https://tart-90ca2.firebaseio.com'
 })
 
-async function authenticate() {
+exports.authenticate = async (req, res) => {
+	let idToken;
+	if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+		console.log('Found "Authorization" header');
+		// Read the ID Token from the Authorization header.
+		idToken = req.headers.authorization.split('Bearer ')[1];
+	} else if(req.cookies) {
+		console.log('Found "__session" cookie');
+		// Read the ID Token from cookie.
+		idToken = req.cookies.__session;
+	} else {
+		// No cookie
+		res.status(403).send('Unauthorized');
+		return false;
+	}
+
 	try {
 		const decodedIdToken = await admin.auth().verifyIdToken(idToken);
-		console.log('ID Token correctly decoded', decodedIdToken);
+		// console.log('ID Token correctly decoded', decodedIdToken);
 		req.user = decodedIdToken;
+		return true;
 	} catch (error) {
 		console.error('Error while verifying Firebase ID token:', error);
 		res.status(403).send('Unauthorized');
-		return;
+		return false;
 	}
 }
 
@@ -82,24 +92,9 @@ async function cancelJob(jobClient, projectId, region, jobId) {
   return operation
 }
 
-async function decryptAsymmetric(client, versionName, ciphertext) {
-  const [result] = await client.asymmetricDecrypt({
-	name: versionName,
-	ciphertext: ciphertext,
-  });
-
-  const plaintext = result.plaintext.toString('utf8');
-
-  console.log(`Plaintext: ${plaintext}`);
-  return plaintext;
-}
-
-async function getCredentials(firestore, uid) {
-	const document = firestore.collection('connections').doc(uid);
-	const doc = await document.get()
-
-	return doc.data();
-}
+// goog.require('proto.google.protobuf.Duration')
+// const Duration = proto.google.protobuf.Duration()
+// const Duration = require('google-protobuf/google/protobuf/duration_pb')
 
 // exports.createcluster = async (req, res) => {
 //   cors(req, res, async () => {
@@ -211,6 +206,9 @@ async function getCredentials(firestore, uid) {
 
 exports.canceljob = async (req, res) => {
   cors(req, res, async () => {
+		const isAuthenticated = admin.authenticate(req, res);
+		if (!isAuthenticated) return;
+
     const dataproc = require('@google-cloud/dataproc');
     const sleep = require('sleep')
     const projectId = 'tart-90ca2'
@@ -222,7 +220,7 @@ exports.canceljob = async (req, res) => {
     // Create a job client with the endpoint set to the desired cluster region
     const jobClient = new dataproc.v1.JobControllerClient({
       apiEndpoint: `${region}-dataproc.googleapis.com`,
-      keyFilename: './tart-90ca2-9d37c42ef480.json',
+			keyFilename: './tart-90ca2-e8da41e06847.json',
     });
 
       // if job needs to be cancelled before listJobs replaces 'filler job'
@@ -230,7 +228,7 @@ exports.canceljob = async (req, res) => {
 
       const clusterClient = new dataproc.v1beta2.ClusterControllerClient({
         apiEndpoint: `${region}-dataproc.googleapis.com`,
-        keyFilename: './tart-90ca2-9d37c42ef480.json',
+				keyFilename: './tart-90ca2-e8da41e06847.json',
       });
 
       let clusterResp = await getCluster(clusterClient, projectId, region, clusterName)
@@ -332,6 +330,9 @@ exports.canceljob = async (req, res) => {
 
 exports.listjobs = async (req,res) => {
   cors(req, res, async () => {
+		const isAuthenticated = admin.authenticate(req, res);
+		if (!isAuthenticated) return;
+
     const dataproc = require('@google-cloud/dataproc');
     const sleep = require('sleep')
     const projectId = 'tart-90ca2'
@@ -341,7 +342,7 @@ exports.listjobs = async (req,res) => {
     // Create a job client with the endpoint set to the desired cluster region
     const jobClient = new dataproc.v1beta2.JobControllerClient({
       apiEndpoint: `${region}-dataproc.googleapis.com`,
-      keyFilename: './tart-90ca2-9d37c42ef480.json',
+			keyFilename: './tart-90ca2-e8da41e06847.json',
     });
 
     let jobResp = await listJobs(jobClient, projectId, region, clusterName)
@@ -352,7 +353,7 @@ exports.listjobs = async (req,res) => {
     if (jobResp[0].status === 'failed list jobs') {
       const clusterClient = new dataproc.v1beta2.ClusterControllerClient({
         apiEndpoint: `${region}-dataproc.googleapis.com`,
-        keyFilename: './tart-90ca2-9d37c42ef480.json',
+				keyFilename: './tart-90ca2-e8da41e06847.json',
       });
 
       let clusterResp = await getCluster(clusterClient, projectId, region, clusterName)
@@ -390,104 +391,36 @@ exports.listjobs = async (req,res) => {
   })
 }
 
-exports.copysample = async (req,res) => {
-  cors(req, res, async () => {
-    const {Storage} = require('@google-cloud/storage');
+const utility = require('./utility');
 
-    const storage = new Storage();
+exports.moveToTrash = utility.moveToTrash;
+exports.moveToWorksheets = utility.moveToWorksheets;
+exports.renameWorksheet = utility.renameWorksheet;
 
-    const userId = req.body.uid
-    const destFilename = 'user/' + userId + '/pit pd.csv'
+const mysql = require('./mysql');
 
-    await storage
-      .bucket('tart-90ca2.appspot.com')
-      .file('scripts/pit pd.csv')
-      .copy(storage.bucket('tart-90ca2.appspot.com').file(destFilename))
-  })
-}
+exports.connectMySql = mysql.connectMySql;
+exports.listDatabasesMySql = mysql.listDatabasesMySql;
+exports.listTablesMySql = mysql.listTablesMySql;
+exports.getTableSampleMySql = mysql.getTableSampleMySql;
 
-exports.decryptAsymmetricR = async (req,res) => {
-	cors(req, res, async () => {
-		const projectId = 'tart-90ca2';
-		const region = 'us-central1';
-		const keyRingId = 'cloudR-user-database';
-		const keyId = 'database-login';
-		const versionId = '1';
-		const userId = req.body.uid
+const mssql = require('./mssql');
 
-		const Firestore = require('@google-cloud/firestore');
-		const firestore = new Firestore({
-			projectId: projectId,
-			keyFilename: './tart-90ca2-9d37c42ef480.json',
-		});
+exports.connectMsSql = mssql.connectMsSql;
+exports.listDatabasesMsSql = mssql.listDatabasesMsSql;
+exports.listTablesMsSql = mssql.listTablesMsSql;
+exports.getTableSampleMsSql = mssql.getTableSampleMsSql;
 
-		const credentials = await getCredentials(firestore, userId)
+const oracledb = require('./oracledb');
 
-		// credentials = credentials[localhost:3306]
+exports.connectOracledb = oracledb.connectOracledb;
+exports.listDatabasesOracledb = oracledb.listDatabasesOracledb;
+exports.listTablesOracledb = oracledb.listTablesOracledb;
+exports.getTableSampleOracledb = oracledb.getTableSampleOracledb;
 
-		const ciphertext = Buffer.from(credentials.password);
+const postgres = require('./postgres');
 
-		const {KeyManagementServiceClient} = require('@google-cloud/kms');
-		const client = new KeyManagementServiceClient();
-
-		const versionName = client.cryptoKeyVersionPath(
-			projectId,
-			region,
-			keyRingId,
-			keyId,
-			versionId
-		);
-
-		return decryptAsymmetric();
-	})
-}
-
-exports.testauth = async (req,res) => {
-	cors(req, res, async () => {
-
-		const admin = require('firebase-admin');
-		admin.initializeApp({
-		  credential: admin.credential.applicationDefault(),
-		  databaseURL: 'https://tart-90ca2.firebaseio.com'
-		})
-
-		console.log('Check if request is authorized with Firebase ID token');
-
-		if ((!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) &&
-			!(req.cookies && req.cookies.__session)) {
-			console.error('No Firebase ID token was passed as a Bearer token in the Authorization header.',
-			'Make sure you authorize your request by providing the following HTTP header:',
-			'Authorization: Bearer <Firebase ID Token>',
-			'or by passing a "__session" cookie.');
-			res.status(403).send('Unauthorized');
-			return;
-		}
-
-		let idToken;
-		if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-			console.log('Found "Authorization" header');
-			// Read the ID Token from the Authorization header.
-			idToken = req.headers.authorization.split('Bearer ')[1];
-		} else if(req.cookies) {
-			console.log('Found "__session" cookie');
-			// Read the ID Token from cookie.
-			idToken = req.cookies.__session;
-		} else {
-			// No cookie
-			res.status(403).send('Unauthorized');
-			return;
-		}
-
-		try {
-			const decodedIdToken = await admin.auth().verifyIdToken(idToken);
-			console.log('ID Token correctly decoded', decodedIdToken);
-			req.user = decodedIdToken;
-			next();
-			return;
-		} catch (error) {
-			console.error('Error while verifying Firebase ID token:', error);
-			res.status(403).send('Unauthorized');
-			return;
-		}
-	})
-}
+exports.connectPostgres = postgres.connectPostgres;
+exports.listDatabasesPostgres = postgres.listDatabasesPostgres;
+exports.listTablesPostgres = postgres.listTablesPostgres;
+exports.getTableSamplePostgres = postgres.getTableSamplePostgres;

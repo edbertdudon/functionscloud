@@ -5,20 +5,25 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "functions-framework --target=testauth"
+    "start": "npx functions-framework --target=getTableSamplePostgres"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@google-cloud/dataproc": "^1.6.0",
     "@google-cloud/functions-framework": "^1.7.1",
+    "@google-cloud/kms": "^2.3.0",
     "@google-cloud/storage": "^4.7.0",
     "cors": "^2.8.5",
+    "fast-crc32c": "^2.0.0",
     "firebase-admin": "^8.12.1",
     "google-auth-library": "^6.0.0",
     "google-protobuf": "^3.12.2",
     "googleapis": "^48.0.0",
+    "mssql": "^6.3.1",
     "mysql": "^2.18.1",
+    "oracledb": "^5.1.0",
+    "pg": "^8.5.1",
     "sleep": "^6.1.0"
   },
   "devDependencies": {}

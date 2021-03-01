@@ -13,108 +13,44 @@
 # source('/Users/eb/bac/functionscloud/scriptsR/sparkR.R')
 # Sys.setenv(JAVA_HOME = "/Library/Java/JavaVirtualMachines/jdk1.8.0_73.jdk/Contents/Home")
 # Sys.setenv(SPARK_HOME = "/usr/local/Cellar/apache-spark/2.4.4")
+# initialDataNoRewrite <- jsonlite::fromJSON('/Users/eb/Downloads/sparkcase.json', simplifyVector=F)
 # sc <- spark_connect(master = "local", version = "2.4.4")
 # stackloss <- copy_to(sc, stackloss, "stackloss")
 #
 install.packages('googleCloudStorageR', repos = 'http://cran.us.r-project.org')
-install.packages('DBI', repos = 'http://cran.us.r-project.org')
-install.packages('odbc', repos = 'http://cran.us.r-project.org')
 install.packages('Rcpp', repos='https://rcppcore.github.io/drat')
 install.packages('sparklyr', repos = 'http://cran.us.r-project.org')
 install.packages('jsonlite', repos = 'http://cran.us.r-project.org')
 install.packages('slam', repos = 'http://cran.us.r-project.org')
-install.packages('ggplot2', repos = 'http://cran.us.r-project.org')
 install.packages('base64enc', repos = 'http://cran.us.r-project.org')
-install.packages('broom', repos = 'http://cran.us.r-project.org')
-install.packages('car', repos = 'http://cran.us.r-project.org')
-install.packages('rrcov', repos = 'http://cran.us.r-project.org')
-install.packages('ROI', repos = 'http://cran.us.r-project.org')
-install.packages('ROI.plugin.glpk', repos = 'http://cran.us.r-project.org')
-install.packages('ROI.plugin.qpoases', repos = 'http://cran.us.r-project.org')
-install.packages('ROI.plugin.optimx', repos = 'http://cran.us.r-project.org')
-install.packages('ROI.plugin.lpsolve', repos = 'http://cran.us.r-project.org')
-install.packages('ROI.plugin.quadprog', repos = 'http://cran.us.r-project.org')
-install.packages('ROI.plugin.nloptr', repos = 'http://cran.us.r-project.org')
-install.packages('ROI.plugin.ecos', repos = 'http://cran.us.r-project.org')
-install.packages('corrr', repos = 'http://cran.us.r-project.org')
-install.packages('dbplot', repos = 'http://cran.us.r-project.org')
 devtools::install_github('cloudyr/rdatastore')
 
-library(googleCloudStorageR)
-library(googleAuthR)
 library(SparkR)
 library(sparklyr)
-# library(odbc)
-library(rdatastore)
-# jsonlite
 library(slam)
-library(ggplot2)
 # dplyr
-library(broom)
-library(car)
-library(rrcov)
-library(ROI)
-library(ROI.plugin.glpk)
-library(ROI.plugin.qpoases)
-library(ROI.plugin.optimx)
-library(ROI.plugin.lpsolve)
-library(ROI.plugin.quadprog)
-library(ROI.plugin.nloptr)
-library(ROI.plugin.ecos)
 
 options(sparklyr.sanitize.column.names = FALSE)
 
-# args <- commandArgs(trailing = T)
+args <- commandArgs(trailing = T)
 
-# #
-# ### Get from Cloud Storage
-# #
 #
+### Get from Cloud Storage
+#
+
+Sys.setenv("GCS_AUTH_FILE" = '/tmp/tart-90ca2-081a368d40ef.json')
+Sys.setenv("GCS_DEFAULT_BUCKET" = 'tart-90ca2.appspot.com')
 # gcs_auth('/tmp/tart-12b0c03bcce1.json')
 # gcs_global_bucket('tart-90ca2.appspot.com')
-# objects <- gcs_list_objects()
-#
-# filePath <- args[[1]]
-# if (filePath %in% objects$name) {
-#   filePosition <- which(filePath == objects$name)
-# }
-# initialDataNoRewrite <- gcs_get_object(objects$name[[filePosition]])
-initialDataNoRewrite <- fromJSON('/Users/eb/Downloads/sparkcase.json', simplifyVector=F)
+initialDataNoRewrite <- googleCloudStorageR::gcs_get_object(args[[1]])
+
 #
 # ## Load Spark
 #
 
-# sparkR.session(appName = 'cloudrun-r-sparkr')
-# sparklyr::spark_install(version = '2.3.0', reset = T)
-# sc <- spark_connect(master = 'yarn-client')
-
-# #
-# ### Get Database Credentials
-# #
-#
-# # Create Google KMS service
-# gar_auth_service(
-# 	'/tmp/tart-90ca2-081a368d40ef.json',
-# 	scope = c(
-# 		'https://www.googleapis.com/auth/cloud-platform',
-# 		'https://www.googleapis.com/auth/cloudkms',
-#   )
-# )
-# decrypt_arg <- list(v1 = 'projects/tart-90ca2/locations/us-central1/keyRings/cloudR-user-database/cryptoKeys/database-login/cryptoKeyVersions/1:asymmetricDecrypt')
-# googleKms <- gar_api_generator(
-# 	'https://cloudkms.googleapis.com',
-# 	'POST',
-# 	path_args = decrypt_arg,
-# 	data_parse_function = function(x) x$plaintext
-# )
-#
-# # Get Credentials
-# Sys.setenv(GOOGLE_APPLICATION_CREDENTIALS = '/tmp/tart-12b0c03bcce1.json')
-# authenticate_datastore('tart-90ca2')
-#
-# argument1 <- args[[1]]
-# authUser <- strsplit(substr(argument1, 6, nchar(argument1)), '\\/')[[1]][1]
-# credentials <- lookup('connections', authUser)
+sparkR.session(appName = 'cloudrun-r-sparkr')
+sparklyr::spark_install(version = '2.3.0', reset = T)
+sc <- spark_connect(master = 'yarn-client')
 
 #
 ### Load Tables to Spark
@@ -148,71 +84,110 @@ for (slide in initialDataNoRewrite) {
   type <- slide$type
 	# if input, load the input to apache Spark with sheet names ie. Sheet1, Sheet2
 	if (identical(type, 'input')) {
+		if (!require('odbc')) {
+			install.packages('odbc', repos = 'http://cran.us.r-project.org')
+		}
+		if (!require('DBI')) {
+			install.packages('DBI', repos = 'http://cran.us.r-project.org')
+		}
+
+		#
+		### Get Database Credentials
+		#
+
+		# Create Google KMS service
+		googleAuthR::gar_auth_service(
+			'/tmp/tart-90ca2-081a368d40ef.json',
+			scope = c(
+				# 'https://www.googleapis.com/auth/cloud-platform',
+				'https://www.googleapis.com/auth/cloudkms',
+				'https://www.googleapis.com/auth/datastore',
+		  )
+		)
+		decrypt_arg <- 'projects/tart-90ca2/locations/us-central1/keyRings/cloudR-user-database/cryptoKeys/database-login/cryptoKeyVersions/1:asymmetricDecrypt'
+		googleKms <- googleAuthR::gar_api_generator(
+			'https://cloudkms.googleapis.com',
+			'POST',
+			path_args = list(v1 = decrypt_arg),
+			data_parse_function = function(x) rawToChar(base64enc::base64decode(x$plaintext))
+		)
+
+    # Create Google Firestore service
+		authUser <- strsplit(substr(argument1, 6, nchar(args[[1]])), '\\/')[[1]][1]
+		firestore_arg <- paste0('projects/tart-90ca2/databases/(default)/documents/connections/', args[[1]])
+		googleFirestore <- googleAuthR::gar_api_generator(
+			'https://firestore.googleapis.com',
+			'GET',
+			path_args = list(v1 = firestore_arg),
+			data_parse_function = function(x) x$fields
+		)
+    connections <- googleFirestore()
+
     slidename <- gsub(' ', '_', slide$name)
-    delimiter <- slide$delimiter
-		databaseCredential <- evalParse(credentials[slide$connection])
-		host <- databaseCredential$host$stringValue
-		port <- databaseCredential$port$stringValue
-		user <- databaseCredential$user$stringValue
-		encryptedPassword <- databaseCredential$password$blobValue
+    connector <- slide$input$connector
+    connection <- slide$input$connection
+    database <- slide$input$database
+    dbTable <- slide$input$table
+    
+		credentials <- connections[connection][[1]][[1]][[1]]
+		host <- credentials$host$stringValue
+		port <- credentials$port$stringValue
+		user <- credentials$user$stringValue
 
-		body = list(ciphertext = encryptedPassword)
-		password <- googleKms(the_body = body)
-
-    switch(delimiter,
+    switch(connector,
       'mySQL' = {
         con <- DBI::dbConnect(odbc::odbc(),
           Driver = "MySQL ODBC 8.0 Driver",
           Server = host,
           UID = user,
-          PWD = password,
+          PWD = googleKms(the_body = list(ciphertext = databaseCredential$password$bytesValue)),
           Port = port
         )
-  			eval(call('<-', as.name(slidename), tbl(con, slide$table)))
+  			eval(call('<-', as.name(slidename), tbl(con, dbTable)))
       },
       'SQLServer' = {
         con <- DBI::dbConnect(odbc::odbc(),
           Driver = "ODBC Driver 17 for SQL Server",
           Server = host,
-          Database = slide$database,
+          Database = database,
           UID = user,
-          PWD = password,
+          PWD = googleKms(the_body = list(ciphertext = databaseCredential$password$bytesValue)),
           Port = port
         )
-  			eval(call('<-', as.name(slidename), tbl(con, slide$table)))
+  			eval(call('<-', as.name(slidename), tbl(con, dbTable)))
       },
       'OracleDB' = {
         con <- DBI::dbConnect(odbc::odbc(),
           Driver = "Oracle 19c ODBC driver",
           Host = host,
-          SVC = slide$database,
+          SVC = database,
           UID = user,
-          PWD = password,
+          PWD = googleKms(the_body = list(ciphertext = databaseCredential$password$bytesValue)),
           Port = port
         )
-        eval(call('<-', as.name(slidename), tbl(con, slide$table)))
+        eval(call('<-', as.name(slidename), tbl(con, dbTable)))
       },
       'PostgreSQL' = {
         con <- DBI::dbConnect(odbc::odbc(),
           Driver = "PostgreSQL Driver",
           Server = host,
-          Database = slide$database,
+          Database = database,
           UID = user,
-          PWD = password,
+          PWD = googleKms(the_body = list(ciphertext = databaseCredential$password$bytesValue)),
           Port = port
         )
-        eval(call('<-', as.name(slidename), tbl(con, slide$table)))
+        eval(call('<-', as.name(slidename), tbl(con, dbTable)))
       },
-      {
-        pathToFileSpark <- paste0(args[[2]], slide$file)
-        sparkCSV <- spark_read_csv(sc,
-          name = slidename,
-          path = pathToFileSpark,
-          header = T,
-          delimiter = slide$delimiter
-        )
-  			eval(call('<-', as.name(slidename), sparkCSV))
-      }
+      # {
+      #   pathToFileSpark <- paste0(args[[2]], slide$file)
+      #   sparkCSV <- spark_read_csv(sc,
+      #     name = slidename,
+      #     path = pathToFileSpark,
+      #     header = T,
+      #     delimiter = slide$delimiter
+      #   )
+  		# 	eval(call('<-', as.name(slidename), sparkCSV))
+      # }
     )
 	}
 }
@@ -338,6 +313,7 @@ evaluateCellNoRewrite <- function(cell) {
           proto_name <- proto_name[proto_name != n]
         }
       }
+
       # sparklyr must contain only one input slide
       if (length(proto_name) == 1 && any(grepl(proto_name, inputNamesNoRewrite))) {
         proto_cell <- gsub(matchedSheetNames[name], 'e', cell)
@@ -346,12 +322,13 @@ evaluateCellNoRewrite <- function(cell) {
             spark_apply(function(e) evalParse(proto_cell)) %>%
             sdf_collect()
         }, error=function(c) NA)
+
         ### Matrix plus sparklyr????
         if (length(pickup_dropoff) == 1) {
           nextResult <- pickup_dropoff
         }
       # Prevent Statistics/Optimizations cell references from being calculated
-    } else if (!isFinishedRegOpt && length(proto_name) > 0 && any(grepl(proto_name, statOptimNamesNoRewrite))) {
+      } else if (!isFinishedRegOpt && length(proto_name) > 0 && any(grepl(proto_name, statOptimNamesNoRewrite))) {
         nextResult <- result
       # mean(test.csv[,1:1]) not mean(sheet1[,1:1]) (cell referenced: 'sheet1[2:2]')
       } else if (grepl(FULL_COLUMN_ROW, result)
@@ -359,6 +336,7 @@ evaluateCellNoRewrite <- function(cell) {
         && length(gregexpr('(', result, fixed=T)[[1]]) == 1
         && gregexpr(')', result, fixed=T)[[1]] != -1
         && length(gregexpr(')', result, fixed=T)[[1]])) {
+
         nextResult <- tryCatch({
           resultNaRm <- substr(result, 1, nchar(result)-1)
           resultNaRm <- paste0(resultNaRm, ',na.rm=T)')
@@ -373,6 +351,7 @@ evaluateCellNoRewrite <- function(cell) {
       } else {
         nextResult <- evalParse(result)
       }
+
       # simple_triplet_matrix(1,1,1)
       if (is.simple_triplet_matrix(nextResult)) {
         result <- as.matrix(nextResult)
@@ -399,7 +378,9 @@ splitAndReplaceNoRewrite <- function(cell, dataname) {
   if (is.factor(cell)) {
     return(as.numeric(cell))
   }
+
   stringParts <- strsplit(cell, EQUATION_FORM_SPLIT, perl=T)[[1]]
+
   # sapply used to distinguish with and without quotes simultaneously 'sum(mean(test.csv[,2:2], na.rm=T),`test.csv`[3,3])'
   if (!is.null(dataname)) {
     stringParts <- unlist(sapply(stringParts, function(x) {
@@ -412,18 +393,22 @@ splitAndReplaceNoRewrite <- function(cell, dataname) {
       return(strsplit(x, dataNameRegex, perl=T)[[1]])
     }, USE.NAMES=F))
   }
+
   evaluateParts <- sapply(stringParts, evaluateCellNoRewrite, USE.NAMES=F)
+
   # Scenario 12 or exp(test.csv[2:10,1]) should return error. Only matrix should output more than one cell.
   # Some cases of matrix multiplication %*% produces list resulting in evaluateCell working when we don't want it to
   if (identical(typeof(evaluateParts), 'list')) {
     evaluateParts <- stringParts
   }
+
   newCell <- cell
   for (part in 1:length(stringParts)) {
     if (!identical(stringParts[part],'')) {
       newCell <- sub(stringParts[part], evaluateParts[part], newCell, fixed=T)
     }
   }
+
   evaluateCellNoRewrite(newCell)
 }
 
@@ -443,17 +428,20 @@ applyNumeric <- function(slide) {
 
 numerizeAndSplitNoRewrite <- function(cell, original) {
   if (notApplicable(cell)) return(cell)
+
   # 'Sheet1!C3 -- Sheet1!C4 -- Dec-31 or 0.42 or 1+3'
   # 'Sheet1!C3 -- Sheet1!C4 + Sheet1!C5 -- 0.43'
   if (is.numeric(cell) || !hasCellReferenceNoRewrite(cell)) {
     return(cell)
   }
+
   # 'Sheet1!C3 + Sheet1!C6 -- 42 or Dec-31+0.1919'
   # 'Sheet1!C3 -- Dec-31'
   for (slide in 1:length(sheetNamesNoRewrite)) {
     currentSlide <- sheetNamesNoRewrite[slide]
     name <- as.name(currentSlide)
     longitude <- applyNumeric(currentSlide)
+
     # 'Sheet1!C3 -- mean(Sheet1$Rating_X) + 0.43'
     if (grepl('$', cell, fixed=T)) {
       eval(call('<<-', name, as.data.frame(longitude, stringsAsFactors=F)))
@@ -461,11 +449,13 @@ numerizeAndSplitNoRewrite <- function(cell, original) {
     } else {
       eval(call('<<-', name, longitude))
     }
+
     # Without cell reference: 'mean(Sheet1[2:3,2:2]) + mean(Sheet1[3:4,2:2])'
     # Without cell reference: 'Sheet4[1:3,1:3] %*% Sheet4[1:3,2:4]'
     # 'mean(Sheet4$Rating_X)' will not work.
     # No header cell reference. In order to accomodate Inputs alongside other cell reference.
     newStoredString <- splitAndReplaceNoRewrite(cell, currentSlide)
+
     # Repeats when sheetNames ['test.csv', 'sheet1'] instead of ['sheet1', 'test.csv']
     if (!identical(newStoredString, cell)) return(newStoredString)
   }
@@ -477,6 +467,7 @@ computeStandardRNoRewrite <- function(cell) {
   # Matrix multiplication expected to be numeric so cell should not be evaluated prior to applyNumeric
   # Should not evaluateCell prior to splitAndReplace, only first element will be used
   storedString <- cell
+
   if (!grepl('%*%', cell)) {
     nextStoredString <- splitAndReplaceNoRewrite(storedString, NULL)
     while(storedString != nextStoredString) {
@@ -486,6 +477,7 @@ computeStandardRNoRewrite <- function(cell) {
       nextStoredString <- splitAndReplaceNoRewrite(storedString, NULL)
     }
   }
+
   numerizeAndSplitNoRewrite(storedString, cell)
 }
 
@@ -500,6 +492,7 @@ returnSheet <- function(s, df) {
   currentLattitude <- currentLattitude[names(currentLattitude) != 'len']
   rows <- getMaxRowsFromInitial(currentLattitude)
   columns <- getMaxColumnsFromInitial(currentLattitude)
+
   for (r in 1:rows) {
     for (c in 1:columns) {
       value <- currentLattitude[[toString(r-1)]]$cells[[toString(c-1)]]$text
@@ -515,6 +508,7 @@ createLattitudeFromSlide <- function(s) {
   configureSheetsToMatrixNoRewrite()
   currentSlide <- evalParse(name)
   currentLattitude <- apply(currentSlide, 1:2, function(x) configureAndComputeNoRewrite(x)[1])
+
   # Check which sheet is used
   checklist <- sheetNamesNoRewrite
   for (n in sheetNamesNoRewrite) {
@@ -522,6 +516,7 @@ createLattitudeFromSlide <- function(s) {
       checklist <- checklist[checklist != n]
     }
   }
+
   checklist <- match(sheetNamesNoRewrite, checklist)
   for (n in 1:length(checklist)) {
     if (is.na(checklist[n])) {
@@ -532,9 +527,11 @@ createLattitudeFromSlide <- function(s) {
       eval(call('<<-', as.name(sheetNamesNoRewrite[n]), currentLattitude))
     }
   }
+
   # Must splitAndReplaceNoRewrite cells to level 1 cell reference. eval(call()) will replace sheets to numeric causing cell reference to return NA
   currentLattitude <- apply(currentSlide, 1:2, function(x) splitAndReplaceNoRewrite(x, NULL)[1])
   currentLattitude <- apply(currentLattitude, 1:2, function(x) numerizeAndSplitNoRewrite(x, x)[1])
+
   # return to initialDataNoRewrite, else results will be rewritten in next iteration
   returnSheet(s, currentLattitude)
 }
@@ -543,13 +540,17 @@ createLattitudeFromSlide <- function(s) {
 ## Compute Spark
 #
 
-# isFinishedRegOpt <- FALSE
-# for (s in 1:length(sheetNamesNoRewrite)) {
-#   type <- initialDataNoRewrite[[s]]$type
-#   if (type == 'sheet') {
-#     createLattitudeFromSlide(s)
-#   }
-# }
+isFinishedRegOpt <- FALSE
+for (s in 1:length(sheetNamesNoRewrite)) {
+  type <- initialDataNoRewrite[[s]]$type
+  if (type == 'sheet') {
+    createLattitudeFromSlide(s)
+  }
+}
+
+#
+## Compute Matrix
+#
 
 #
 ## Function Required for Regression/Optimization/Chart
@@ -562,14 +563,15 @@ RANGE_REGEX <- '\\[{1}\\d*\\:?\\d*\\,{1}\\d*\\:?\\d*\\]{1}'
 appendMatchNumbers <- function(range) {
   matchRange <- regmatches(range, regexpr(RANGE_REGEX, range))
   matchNumbers <- regmatches(matchRange, gregexpr('\\d+', matchRange))[[1]]
+
   if(length(matchNumbers) == 1 && grepl(FULL_COLUMN_ROW, matchRange)) {
     matchSlide <- sub(FULL_COLUMN_ROW, '', range)
     # sheet1[,2]
     if (grepl('\\[{1},{1}\\d+\\:?\\d*\\]{1}', range)) {
       rowLength <- nrow(evalParse(matchSlide))
       result <- c(1, rowLength, matchNumbers, matchNumbers)
-    # sheet1[2,]
     } else {
+      # sheet1[2,]
       colLength <- ncol(evalParse(matchSlide))
       result <- c(matchNumbers, matchNumbers, 1, colLength)
     }
@@ -578,12 +580,13 @@ appendMatchNumbers <- function(range) {
     result <- c(matchNumbers[1], matchNumbers[1], matchNumbers[2], matchNumbers[2])
   } else if (length(matchNumbers) == 2 && grepl('\\d+\\:{1}\\d+\\,{1}|\\,{1}\\d+\\:{1}\\d+', matchRange)) {
     matchSlide <- sub(FULL_COLUMN_ROW, '', range)
+
     # sheet1[2:2,]
     if (grepl('\\d+\\:{1}\\d+\\,{1}', matchRange)) {
       colLength <- ncol(evalParse(matchSlide))
       result <- c(matchNumbers, 1, colLength)
-    # sheet1[,2:2]
     } else {
+      # sheet1[,2:2]
       rowLength <- nrow(evalParse(matchSlide))
       result <- c(1, rowLength, matchNumbers)
     }
@@ -591,8 +594,8 @@ appendMatchNumbers <- function(range) {
     # sheet[1:2,2]
     if (grepl('\\d+\\:{1}\\d+\\,{1}\\d+', matchRange)) {
       result <- append(matchNumbers, matchNumbers[3], after=3)
-    # sheet[1,1:2]
     } else {
+      # sheet[1,1:2]
       result <- append(matchNumbers, matchNumbers[1], after=0)
     }
   } else {
@@ -602,7 +605,7 @@ appendMatchNumbers <- function(range) {
 }
 
 lattitudeAsDataframeNoRewrite <- function(firstrow, currentLattitude, range) {
-  if (firstrow == 'true') {
+  if (firstrow) {
     if (ncol(currentLattitude) == 1) {
       cname <- currentLattitude[1,1]
       currentLattitude <- as.matrix(currentLattitude[-1,])
@@ -610,6 +613,7 @@ lattitudeAsDataframeNoRewrite <- function(firstrow, currentLattitude, range) {
     } else {
       colnames(currentLattitude) <- currentLattitude[1,]
       currentLattitude <- currentLattitude[-1,]
+
       if (is.vector(currentLattitude)) {
         cnames <- names(currentLattitude)
         currentLattitude <- matrix(currentLattitude, nrow=1)
@@ -617,19 +621,21 @@ lattitudeAsDataframeNoRewrite <- function(firstrow, currentLattitude, range) {
       }
     }
   } else {
-    if (length(appendMatchNumbers(range)) != 4) {
-      stop('Invalid range.')
-    }
+    if (length(appendMatchNumbers(range)) != 4) stop('Invalid range.')
+
     rowLength <- length(evalParse(range)[,1])
     matchNumbers <- appendMatchNumbers(range)
     colLength <- matchNumbers[4]-matchNumbers[3]+1
     colnames <- vector(mode='character', length=colLength)
+
     for (i in 1:colLength) {
       letter <- columnToLetter(matchNumbers[3]+i-1)
       colnames[i] <- paste0(letter, matchNumbers[1], ':', letter, matchNumbers[2])
     }
+
     colnames(currentLattitude) <- colnames
   }
+
   currentLattitude <- apply(currentLattitude, 1:2, as.numeric)
   as.data.frame(currentLattitude)
 }
@@ -653,6 +659,7 @@ returnStatistic <- function(df, s) {
       initialDataNoRewrite[[s]]$rows[[toString(r-1)]]$cells[[toString(c-1)]]$text <<- lattitude[r,c][[1]]
     }
   }
+  initialDataNoRewrite[[s]]$regression$sample <<- FALSE
 }
 
 returnStatisticRowCol2 <- function(df, s) {
@@ -667,6 +674,7 @@ returnStatisticRowCol2 <- function(df, s) {
       initialDataNoRewrite[[s]]$rows[[toString(r-1)]]$cells[[toString(c-1)]]$text <<- lattitude[r,c][[1]]
     }
   }
+  initialDataNoRewrite[[s]]$regression$sample <<- FALSE
 }
 
 summaryStatistics <- function(x, na.omit=FALSE) {
@@ -740,6 +748,10 @@ configureSheetsToMatrixNoRewrite()
 for (s in 1:length(sheetNamesNoRewrite)) {
   regression <- initialDataNoRewrite[[s]]$regression
   if (!is.null(regression)) {
+		if (!require('broom')) {
+			install.packages('broom', repos = 'http://cran.us.r-project.org')
+		}
+
     range <- regression$range
     currentSlide <- sub(RANGE_REGEX, '', range)
     proto_name <- gsub(' ', '_', currentSlide)
@@ -754,7 +766,7 @@ for (s in 1:length(sheetNamesNoRewrite)) {
       # Descriptive Statistics
       'statdesc' = {
         # stackloss %>% sdf_describe() %>% returnStatistic(s)
-        variablesx <- fromJSON(regression$variablesx)
+        variablesx <- jsonlite::fromJSON(regression$variablesx)
         try(
           evalParse(proto_name) %>%
             sdf_describe(cols=variablesx) %>%
@@ -793,7 +805,10 @@ for (s in 1:length(sheetNamesNoRewrite)) {
       },
       # Correlations
       'cor' = {
-        variablesx <- fromJSON(regression$variablesx)
+				if (!require('corrr')) {
+					install.packages('corrr', repos = 'http://cran.us.r-project.org')
+				}
+        variablesx <- jsonlite::fromJSON(regression$variablesx)
         method <- setMethodCorrelation(regression$method)
         try(
           evalParse(proto_name) %>%
@@ -809,7 +824,7 @@ for (s in 1:length(sheetNamesNoRewrite)) {
           evalParse(proto_name) %>%
             ml_linear_regression(evalParse(formula)) %>%
             coef() %>%
-            tidy() %>%
+            broom::tidy() %>%
             rename(term=names, coefficient=x) %>%
             returnStatistic(s)
         )
@@ -901,7 +916,7 @@ for (s in 1:length(sheetNamesNoRewrite)) {
         try(
           evalParse(proto_name) %>%
             ml_linear_regression(evalParse(formula)) %>%
-            tidy() %>%
+            broom::tidy() %>%
             returnStatistic(s)
         )
       },
@@ -910,7 +925,7 @@ for (s in 1:length(sheetNamesNoRewrite)) {
         try(
           evalParse(proto_name) %>%
             ml_linear_regression(evalParse(formula)) %>%
-            tidy() %>%
+            broom::tidy() %>%
             returnStatistic(s)
         )
       },
@@ -933,9 +948,12 @@ for (s in 1:length(sheetNamesNoRewrite)) {
         # }, context)
       },
       'ncvtest' = {
+				if (!require('car')) {
+				  install.packages('car', repos = 'http://cran.us.r-project.org')
+				}
         formula <- gsubFullstop(regression$formula)
         # sparkApplyColnames(proto_name, function(e, formula) {
-        #   ncvTest(lm(eval(parse(text=formula)), e))
+        #   car::ncvTest(lm(eval(parse(text=formula)), e))
         # }, formula)
       },
       'outliertest' = {
@@ -945,9 +963,12 @@ for (s in 1:length(sheetNamesNoRewrite)) {
         # }, formula)
       },
       'varianceinflation' = {
+				if (!require('car')) {
+				  install.packages('car', repos = 'http://cran.us.r-project.org')
+				}
         formula <- gsubFullstop(regression$formula)
         # sparkApplyColnames(proto_name, function(e, formula) {
-        #   broom::tidy(vif(lm(eval(parse(text=formula)), e)))
+        #   broom::tidy(car::vif(lm(eval(parse(text=formula)), e)))
         # }, formula)
       },
       'aov' = {
@@ -1051,7 +1072,7 @@ for (s in 1:length(sheetNamesNoRewrite)) {
       'onewayman' = {
         variablex <- gsubFullstop(regression$variablex)
         variablesy <- gsubFullstop(
-          fromJSON(regression$variablesy)
+          jsonlite::fromJSON(regression$variablesy)
         )
         formula <- paste0('cbind(', paste0(variablesy, collapse=','), ')~`', variablex, '`')
 
@@ -1060,10 +1081,13 @@ for (s in 1:length(sheetNamesNoRewrite)) {
         }, formula)
       },
       # 'robustonewayman' = {
+				# if (!require('rrcov')) {
+				#   install.packages('rrcov', repos = 'http://cran.us.r-project.org')
+				# }
         # context <- list(
         #   variablex = gsubFullstop(regression$variablex),
         #   variablesy = gsubFullstop(
-        #     fromJSON(regression$variablesy)
+        #     jsonlite::fromJSON(regression$variablesy)
         #   ),
         #   method=regression$method,
         #   approximation=regression$approximation,
@@ -1071,7 +1095,7 @@ for (s in 1:length(sheetNamesNoRewrite)) {
         #
         # sparkApplyColnames(proto_name, function(e, context) {
         #   broom::tidy(
-        #     Wilks.test(
+        #     rrcov::Wilks.test(
         #       context$variablesy,
         #       context$variablex,
         #       method=context$method,
@@ -1108,7 +1132,39 @@ for (s in 1:length(sheetNamesNoRewrite)) {
   optimization <- initialDataNoRewrite[[s]]$optimization
 
   if (!is.null(optimization)) {
+		if (!require('ROI')) {
+			install.packages('ROI', repos = 'http://cran.us.r-project.org')
+		}
+		if (!require('ROI.plugin.glpk')) {
+		install.packages('ROI.plugin.glpk', repos = 'http://cran.us.r-project.org')
+		}
+		if (!require('ROI.plugin.qpoases')) {
+		install.packages('ROI.plugin.qpoases', repos = 'http://cran.us.r-project.org')
+		}
+		if (!require('ROI.plugin.optimx')) {
+		install.packages('ROI.plugin.optimx', repos = 'http://cran.us.r-project.org')
+		}
+		if (!require('ROI.plugin.lpsolve')) {
+		install.packages('ROI.plugin.lpsolve', repos = 'http://cran.us.r-project.org')
+		}
+		if (!require('ROI.plugin.quadprog')) {
+		install.packages('ROI.plugin.quadprog', repos = 'http://cran.us.r-project.org')
+		}
+		if (!require('ROI.plugin.nloptr')) {
+		install.packages('ROI.plugin.nloptr', repos = 'http://cran.us.r-project.org')
+		}
+		if (!require('ROI.plugin.ecos')) {
+			install.packages('ROI.plugin.ecos', repos = 'http://cran.us.r-project.org')
+		}
 
+		library(ROI)
+		library(ROI.plugin.glpk)
+		library(ROI.plugin.qpoases)
+		library(ROI.plugin.optimx)
+		library(ROI.plugin.lpsolve)
+		library(ROI.plugin.quadprog)
+		library(ROI.plugin.nloptr)
+		library(ROI.plugin.ecos)
   }
 }
 
@@ -1126,6 +1182,13 @@ CHARTS_TYPES = c(
 for (s in 1:length(sheetNamesNoRewrite)) {
   charts <- initialDataNoRewrite[[s]]$charts
   for (chart in charts) {
+		if (!require('dbplot')) {
+			install.packages('dbplot', repos = 'http://cran.us.r-project.org')
+		}
+		if (!require('ggplot2')) {
+			install.packages('ggplot2', repos = 'http://cran.us.r-project.org')
+		}
+
     range <- gsub(' ', '_', translateRForProcess(chart$range, s))
     currentSlide <- sub(RANGE_REGEX, '', range)
     proto_name <- gsub(' ', '_', currentSlide)
@@ -1180,7 +1243,7 @@ for (s in 1:length(sheetNamesNoRewrite)) {
       )
     }
 
-    ggsave('/tmp/ggplot.png', pngChart)
+    ggplot2::ggsave('/tmp/ggplot.png', pngChart)
     initialDataNoRewrite[[s]]$sparkuri <- base64enc::dataURI(file='/tmp/ggplot.png', mime='image/jpeg')
   }
 }
@@ -1189,49 +1252,49 @@ for (s in 1:length(sheetNamesNoRewrite)) {
 ## Finish calculating Missing Values
 #
 
-# isFinishedRegOpt <- TRUE
-# for (s in 1:length(sheetNamesNoRewrite)) {
-#   type <- initialDataNoRewrite[[s]]$type
-#   if (initialDataNoRewrite[[s]]$type == 'sheet') {
-#     # calculate missing references from regression/optimization
-#     createLattitudeFromSlide(s)
-#   }
-# }
+isFinishedRegOpt <- TRUE
+for (s in 1:length(sheetNamesNoRewrite)) {
+  type <- initialDataNoRewrite[[s]]$type
+  if (initialDataNoRewrite[[s]]$type == 'sheet') {
+    # calculate missing references from regression/optimization
+    createLattitudeFromSlide(s)
+  }
+}
 
-# #
-# # Upload back to cloud storage
-# #
 #
-# json_structure <- function(input, output) {
-# 	jsonlite::write_json(
-# 		input,
-# 		output,
-# 		pretty=F,
-# 		auto_unbox=T,
-# 		null=c('null')
-#   )
-# }
+# Upload back to cloud storage
 #
-# substrRight <- function(x, n) {
-# 	substr(x, nchar(x)-n+1, nchar(x))
-# }
-# runCounter <- as.numeric(substrRight(max(grep(args[[1]], objects$name, value=T)), 1))
-#
-# if (is.na(runCounter)) {
-# 	runCounter <- 1
-# } else {
-# 	runCounter <- runCounter + 1
-# }
-#
-# if (grepl('run', args[[1]])) {
-# 	newPathToFileGCP <- paste(args[[1]], runCounter, sep=' ')
-# } else {
-# 	newPathToFileGCP <- paste(args[[1]], 'run', runCounter, sep=' ')
-# }
-#
-# gcs_upload(
-# 	initialDataNoRewrite,
-# 	name=newPathToFileGCP,
-# 	object_function=json_structure)
-#
-# sparkR.session.stop()
+
+json_structure <- function(input, output) {
+	jsonlite::write_json(
+		input,
+		output,
+		pretty=F,
+		auto_unbox=T,
+		null=c('null')
+  )
+}
+
+substrRight <- function(x, n) {
+	substr(x, nchar(x)-n+1, nchar(x))
+}
+runCounter <- as.numeric(substrRight(max(grep(args[[1]], objects$name, value=T)), 1))
+
+if (is.na(runCounter)) {
+	runCounter <- 1
+} else {
+	runCounter <- runCounter + 1
+}
+
+if (grepl('run', args[[1]])) {
+	newPathToFileGCP <- paste(args[[1]], runCounter, sep=' ')
+} else {
+	newPathToFileGCP <- paste(args[[1]], 'run', runCounter, sep=' ')
+}
+
+googleCloudStorageR::gcs_upload(
+	initialDataNoRewrite,
+	name=newPathToFileGCP,
+	object_function=json_structure)
+
+sparkR.session.stop()
